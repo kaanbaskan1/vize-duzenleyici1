@@ -1,4 +1,18 @@
+import os
 import base64
+from uuid import uuid4
+
+from fastapi import FastAPI, UploadFile, File, HTTPException
+
+from pdf_processor import process_pdf
+
+app = FastAPI(title="Vize PDF Düzenleyici API")
+
+
+@app.get("/")
+def root():
+    return {"message": "Vize PDF düzenleyici servis çalışıyor."}
+
 
 @app.post("/process")
 async def process_pdf_endpoint(file: UploadFile = File(...)):
@@ -27,20 +41,22 @@ async def process_pdf_endpoint(file: UploadFile = File(...)):
 
         # İşlenmiş PDF'i base64'e çevir
         processed_file_base64 = None
-        if result.get("output_path") and os.path.exists(result["output_path"]):
-            with open(result["output_path"], "rb") as pdf_file:
-                processed_file_base64 = base64.b64encode(pdf_file.read()).decode("utf-8")
+        output_path = result.get("output_path")
         
-        # Geçici dosyaları temizle
+        if output_path and os.path.exists(output_path):
+            with open(output_path, "rb") as pdf_file:
+                processed_file_base64 = base64.b64encode(pdf_file.read()).decode("utf-8")
+
+        # Geçici input dosyasını temizle
         if os.path.exists(input_path):
             os.remove(input_path)
 
         return {
-            "success": True,  # Dosya işlendiyse her zaman True
+            "success": True,
             "full_name": result.get("full_name"),
             "output_filename": result.get("filename"),
-            "processed_file_base64": processed_file_base64,  # KRİTİK: Bu alan eklendi!
-            "full_name_found": result.get("success", False),  # Full name bulundu mu?
+            "processed_file_base64": processed_file_base64,
+            "full_name_found": result.get("success", False),
         }
 
     except Exception as e:
@@ -48,5 +64,8 @@ async def process_pdf_endpoint(file: UploadFile = File(...)):
         return {
             "success": False,
             "error": str(e),
+            "full_name": None,
+            "output_filename": None,
             "processed_file_base64": None,
+            "full_name_found": False,
         }
