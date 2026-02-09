@@ -1,4 +1,4 @@
-fastapi
-uvicorn[standard]
-python-multipart
-pymupdf
+flask
+gunicorn
+pdfplumber
+pdf_redactor
