@@ -37,6 +37,7 @@ def remove_text_from_pdf(input_pdf: str, output_pdf: str):
     """
     options = pdf_redactor.RedactorOptions()
     options.content_filters = [
+        # === Eski firma: MBD Tourism / Arkan Tourism ===
         (re.compile(r"TEL:\s*\d+"), lambda m: ""),
         (re.compile(r"P\.O\.BOX:\s*\d+[,/.\s\d]*"), lambda m: ""),
         (re.compile(r"M B D TOURISM L\.L\.C"), lambda m: ""),
@@ -47,6 +48,16 @@ def remove_text_from_pdf(input_pdf: str, output_pdf: str):
         (re.compile(r",?\s*Mob[:\s]*\+?\d{1,3}[-\s]?\d{1,4}[-\s]?\d{4,}"), lambda m: ""),
         (re.compile(r"Arkan\s*Tourism\s*LLC", re.IGNORECASE), lambda m: ""),
         (re.compile(r",?\s*Mob\s*\+971\s*54\s*560\s*4204"), lambda m: ""),
+
+        # === Yeni firma: Hair of Istanbul Tourism ===
+        (re.compile(r"HAIR OF ISTANBUL TORUISM L\.L\.C", re.IGNORECASE), lambda m: ""),
+        (re.compile(r"HAIR OF ISTANBUL TOURISM L\.L\.C", re.IGNORECASE), lambda m: ""),
+        (re.compile(r"HAIR\s*OF\s*ISTANBUL\s*TOUR?UISM\s*L\.?L\.?C", re.IGNORECASE), lambda m: ""),
+        (re.compile(r"هير اوف اسطنبول للسياحة ش\.ذ\.م\.م"), lambda m: ""),
+        (re.compile(r"هير\s*اوف\s*اسطنبول\s*للسياحة"), lambda m: ""),
+        (re.compile(r"TEL:\s*042659878"), lambda m: ""),
+        (re.compile(r"TEL:\s*042549878"), lambda m: ""),
+        (re.compile(r"P\.O\.BOX:\s*1\s*,\s*2/1/482537"), lambda m: ""),
     ]
 
     options.input_stream = input_pdf
@@ -101,7 +112,6 @@ def process_pdf(original_path: str, output_dir: str):
             fallback_name = f"fallback_{uuid4().hex[:8]}.pdf"
             fallback_path = os.path.join(output_dir, fallback_name)
             shutil.copy(original_path, fallback_path)
-
             return {
                 "success": False,
                 "full_name": None,
