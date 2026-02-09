@@ -4,10 +4,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def process_pdf(input_path: str) -> str:
-    """Main entry point called by api.py"""
-    output_path = input_path.replace(".pdf", "_cleaned.pdf")
-    
+def process_pdf(input_path: str, output_path: str) -> str:
     doc = fitz.open(input_path)
 
     search_config = [
