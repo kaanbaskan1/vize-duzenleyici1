@@ -4,8 +4,8 @@ import re
 import shutil
 from uuid import uuid4
 
+import fitz  # pymupdf
 import pdfplumber
-import pikepdf
 
 
 def extract_full_name(pdf_path: str):
@@ -27,49 +27,40 @@ def sanitize_filename(filename: str):
 
 
 def remove_text_from_pdf(input_pdf: str, output_pdf: str):
-    pdf = pikepdf.open(input_pdf)
+    doc = fitz.open(input_pdf)
 
-    patterns = [
-        # Hair of Istanbul - tum varyantlar
-        rb"HAIR\s+OF\s+ISTANBUL\s+TOUR[UI]ISM\s+L\.?L\.?C",
-        rb"HAIR\s+OF\s+ISTANBUL",
-        # Arkan
-        rb"Arkan\s*Tourism\s*LLC",
-        # MBD
-        rb"M\s*B\s*D\s*TOURISM\s*L\.?L\.?C",
-        # Telefon numaralari - tum formatlar
-        rb"Tel:\+[\d\-]+",
-        rb"TEL:\s*\d+",
-        rb",?\s*Mob:\s*\+?[\d\-]+",
-        # PO Box
-        rb"P\.?O\.?BOX:?\s*[\d,/.\s]+",
+    # Silinecek İngilizce metinler
+    search_terms = [
+        "HAIR OF ISTANBUL",
+        "TOURISM L.L.C",
+        "TOURISM LLC",
+        "Arkan Tourism LLC",
+        "Arkan Tourism",
+        "M B D TOURISM L.L.C",
+        "M B D TOURISM LLC",
+        "MBD TOURISM",
+        "P.O.BOX",
+        "TEL:",
+        "Tel:",
+        "Mob:",
     ]
 
-    for page in pdf.pages:
-        if "/Contents" not in page:
-            continue
-        contents = page["/Contents"]
-        if isinstance(contents, pikepdf.Array):
-            streams = list(contents)
-        else:
-            streams = [contents]
-        new_streams = []
-        for stream_ref in streams:
-            stream = stream_ref.resolve() if hasattr(stream_ref, 'resolve') else stream_ref
-            try:
-                raw = stream.read_bytes()
-            except Exception:
-                new_streams.append(stream_ref)
-                continue
-            modified = raw
-            for pattern in patterns:
-                modified = re.sub(pattern, b"", modified)
-            if modified != raw:
-                stream.write(modified)
-            new_streams.append(stream_ref)
+    for page in doc:
+        for term in search_terms:
+            areas = page.search_for(term)
+            for area in areas:
+                # Alani biraz genislet (telefon numarasi vs. icin)
+                expanded = fitz.Rect(
+                    area.x0 - 2,
+                    area.y0 - 2,
+                    area.x1 + 200,  # Saga dogru genislet (numara, adres vs.)
+                    area.y1 + 2
+                )
+                page.add_redact_annot(expanded, fill=(1, 1, 1))  # Beyaz dolgu
+        page.apply_redactions()
 
-    pdf.save(output_pdf)
-    pdf.close()
+    doc.save(output_pdf)
+    doc.close()
 
 
 def process_pdf(original_path, output_dir):
