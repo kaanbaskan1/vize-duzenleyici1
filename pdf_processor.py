@@ -29,59 +29,44 @@ def sanitize_filename(filename: str):
 def remove_text_from_pdf(input_pdf: str, output_pdf: str):
     pdf = pikepdf.open(input_pdf)
 
-    # Sadece ASCII pattern'ler - Arapca hex glyph'lere dokunmaz
     patterns = [
-        # Hair of Istanbul - tam string
-        rb"\(HAIR OF ISTANBUL  TOURISM L\.L\.C\)",
-        rb"\(HAIR OF ISTANBUL TOURISM L\.L\.C\)",
-        rb"\(HAIR OF ISTANBUL  TORUISM L\.L\.C\)",
-        rb"\(HAIR OF ISTANBUL TORUISM L\.L\.C\)",
-        # Hair of Istanbul - parcali TJ array icinde
-        rb"HAIR OF ISTANBUL",
-        # MBD
-        rb"M B D TOURISM L\.L\.C",
+        # Hair of Istanbul - tum varyantlar
+        rb"HAIR\s+OF\s+ISTANBUL\s+TOUR[UI]ISM\s+L\.?L\.?C",
+        rb"HAIR\s+OF\s+ISTANBUL",
         # Arkan
-        rb"Arkan Tourism LLC",
         rb"Arkan\s*Tourism\s*LLC",
-    ]
-
-    # Telefon ve adres - bunlar kesinlikle ASCII
-    contact_patterns = [
-        rb"TEL:\s*042[56]\d+",
-        rb"TEL:\s*\d{6,}",
-        rb"P\.O\.BOX:\s*1\s*,\s*2/1/482537",
-        rb"P\.O\.BOX:\s*\d+[,/.\s\d]*",
-        rb"Tel\s*no\s*:\s*\+?\d[\d\s\-]+",
-        rb"Mob\s*:\s*\+?\d[\d\s\-]+",
+        # MBD
+        rb"M\s*B\s*D\s*TOURISM\s*L\.?L\.?C",
+        # Telefon numaralari - tum formatlar
+        rb"Tel:\+[\d\-]+",
+        rb"TEL:\s*\d+",
+        rb",?\s*Mob:\s*\+?[\d\-]+",
+        # PO Box
+        rb"P\.?O\.?BOX:?\s*[\d,/.\s]+",
     ]
 
     for page in pdf.pages:
-        content_obj = page.get("/Contents")
-        if content_obj is None:
+        if "/Contents" not in page:
             continue
-
-        if isinstance(content_obj, pikepdf.Array):
-            streams = list(content_obj)
+        contents = page["/Contents"]
+        if isinstance(contents, pikepdf.Array):
+            streams = list(contents)
         else:
-            streams = [content_obj]
-
+            streams = [contents]
+        new_streams = []
         for stream_ref in streams:
+            stream = stream_ref.resolve() if hasattr(stream_ref, 'resolve') else stream_ref
             try:
-                raw = stream_ref.read_bytes()
-                modified = raw
-
-                for pat in patterns:
-                    # Sadece ASCII byte'lari etkiler
-                    modified = re.sub(pat, b"", modified)
-
-                for pat in contact_patterns:
-                    modified = re.sub(pat, b"", modified)
-
-                if modified != raw:
-                    stream_ref.write(modified)
-            except Exception as e:
-                print(f"Stream isleme hatasi: {e}")
+                raw = stream.read_bytes()
+            except Exception:
+                new_streams.append(stream_ref)
                 continue
+            modified = raw
+            for pattern in patterns:
+                modified = re.sub(pattern, b"", modified)
+            if modified != raw:
+                stream.write(modified)
+            new_streams.append(stream_ref)
 
     pdf.save(output_pdf)
     pdf.close()
