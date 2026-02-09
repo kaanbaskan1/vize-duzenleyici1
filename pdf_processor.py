@@ -5,7 +5,7 @@ import shutil
 from uuid import uuid4
 
 import pdfplumber
-import pdf_redactor
+import pikepdf
 
 
 def extract_full_name(pdf_path: str):
@@ -27,23 +27,64 @@ def sanitize_filename(filename: str):
 
 
 def remove_text_from_pdf(input_pdf: str, output_pdf: str):
-    options = pdf_redactor.RedactorOptions()
+    pdf = pikepdf.open(input_pdf)
 
-    options.content_filters = [
-        (re.compile(r"TEL:\s*\d+"), lambda m: ""),
-        (re.compile(r"P\.O\.BOX:\s*\d+[,/.\s\d]*"), lambda m: ""),
-        (re.compile(r"M B D TOURISM L\.L\.C"), lambda m: ""),
-        (re.compile(r"Tel\s*(?:no)?:?\s*\+?\d{1,3}[-\s]?\d{1,4}[-\s]?\d{4,}"), lambda m: ""),
-        (re.compile(r",?\s*Mob[:\s]*\+?\d{1,3}[-\s]?\d{1,4}[-\s]?\d{4,}"), lambda m: ""),
-        (re.compile(r"Arkan\s*Tourism\s*LLC", re.IGNORECASE), lambda m: ""),
-        (re.compile(r"HAIR\s*OF\s*ISTANBUL\s*TOUR?[UI]ISM\s*L\.?L\.?C", re.IGNORECASE), lambda m: ""),
-        (re.compile(r"TEL:\s*042[56]\d+"), lambda m: ""),
-        (re.compile(r"P\.O\.BOX:\s*1\s*,\s*2/1/482537"), lambda m: ""),
+    # Sadece ASCII pattern'ler - Arapca hex glyph'lere dokunmaz
+    patterns = [
+        # Hair of Istanbul - tam string
+        rb"\(HAIR OF ISTANBUL  TOURISM L\.L\.C\)",
+        rb"\(HAIR OF ISTANBUL TOURISM L\.L\.C\)",
+        rb"\(HAIR OF ISTANBUL  TORUISM L\.L\.C\)",
+        rb"\(HAIR OF ISTANBUL TORUISM L\.L\.C\)",
+        # Hair of Istanbul - parcali TJ array icinde
+        rb"HAIR OF ISTANBUL",
+        # MBD
+        rb"M B D TOURISM L\.L\.C",
+        # Arkan
+        rb"Arkan Tourism LLC",
+        rb"Arkan\s*Tourism\s*LLC",
     ]
 
-    options.input_stream = input_pdf
-    options.output_stream = output_pdf
-    pdf_redactor.redactor(options)
+    # Telefon ve adres - bunlar kesinlikle ASCII
+    contact_patterns = [
+        rb"TEL:\s*042[56]\d+",
+        rb"TEL:\s*\d{6,}",
+        rb"P\.O\.BOX:\s*1\s*,\s*2/1/482537",
+        rb"P\.O\.BOX:\s*\d+[,/.\s\d]*",
+        rb"Tel\s*no\s*:\s*\+?\d[\d\s\-]+",
+        rb"Mob\s*:\s*\+?\d[\d\s\-]+",
+    ]
+
+    for page in pdf.pages:
+        content_obj = page.get("/Contents")
+        if content_obj is None:
+            continue
+
+        if isinstance(content_obj, pikepdf.Array):
+            streams = list(content_obj)
+        else:
+            streams = [content_obj]
+
+        for stream_ref in streams:
+            try:
+                raw = stream_ref.read_bytes()
+                modified = raw
+
+                for pat in patterns:
+                    # Sadece ASCII byte'lari etkiler
+                    modified = re.sub(pat, b"", modified)
+
+                for pat in contact_patterns:
+                    modified = re.sub(pat, b"", modified)
+
+                if modified != raw:
+                    stream_ref.write(modified)
+            except Exception as e:
+                print(f"Stream isleme hatasi: {e}")
+                continue
+
+    pdf.save(output_pdf)
+    pdf.close()
 
 
 def process_pdf(original_path, output_dir):
