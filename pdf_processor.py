@@ -49,15 +49,22 @@ def remove_text_from_pdf(input_pdf: str, output_pdf: str):
         (re.compile(r"Arkan\s*Tourism\s*LLC", re.IGNORECASE), lambda m: ""),
         (re.compile(r",?\s*Mob\s*\+971\s*54\s*560\s*4204"), lambda m: ""),
 
-        # === Yeni firma: Hair of Istanbul Tourism ===
+        # === Yeni firma: Hair of Istanbul Tourism (İngilizce) ===
         (re.compile(r"HAIR OF ISTANBUL TORUISM L\.L\.C", re.IGNORECASE), lambda m: ""),
         (re.compile(r"HAIR OF ISTANBUL TOURISM L\.L\.C", re.IGNORECASE), lambda m: ""),
         (re.compile(r"HAIR\s*OF\s*ISTANBUL\s*TOUR?UISM\s*L\.?L\.?C", re.IGNORECASE), lambda m: ""),
-        (re.compile(r"هير اوف اسطنبول للسياحة ش\.ذ\.م\.م"), lambda m: ""),
-        (re.compile(r"هير\s*اوف\s*اسطنبول\s*للسياحة"), lambda m: ""),
         (re.compile(r"TEL:\s*042659878"), lambda m: ""),
         (re.compile(r"TEL:\s*042549878"), lambda m: ""),
         (re.compile(r"P\.O\.BOX:\s*1\s*,\s*2/1/482537"), lambda m: ""),
+
+        # === Yeni firma: Hair of Istanbul Tourism (Arapça - PDF encoding varyasyonları) ===
+        (re.compile(r"هير\s*اوف\s*اسطنبول\s*للسياحة\s*ش\.?ذ\.?م\.?م"), lambda m: ""),
+        (re.compile(r"هير\s*اوف\s*اسطنبول\s*للسياحة"), lambda m: ""),
+        (re.compile(r"م\.?م\.?ذ\.?ش\s*للسياحة\s*لسطنبوا\s*اوف\s*هير"), lambda m: ""),
+        (re.compile(r"م\.?م\.?ذ\.?ش\s*ةحايسلل\s*لوبنطسا\s*فوا\s*ريه"), lambda m: ""),
+        (re.compile(r"ﻡ\.?ﻡ\.?ﺫ\.?ﺵ\s*ﺔﺣﺎﻴﺴﻠﻟ\s*ﻝﻮﺒﻨﻄﺳﺍ\s*ﻑﻭﺍ\s*ﺮﻴﻫ"), lambda m: ""),
+        (re.compile(r"للسياحة\s*لسطنبوا\s*اوف\s*هير"), lambda m: ""),
+        (re.compile(r"ﺔﺣﺎﻴﺴﻠﻟ\s*ﻝﻮﺒﻨﻄﺳﺍ\s*ﻑﻭﺍ\s*ﺮﻴﻫ"), lambda m: ""),
     ]
 
     options.input_stream = input_pdf
@@ -94,36 +101,4 @@ def process_pdf(original_path: str, output_dir: str):
             new_filename = f"vize_{uuid4().hex[:8]}.pdf"
 
         new_path = os.path.join(output_dir, new_filename)
-        os.replace(temp_pdf, new_path)
-
-        print(f"✅ Dosya temizlendi ve {new_filename} olarak kaydedildi!")
-
-        return {
-            "success": full_name is not None,
-            "full_name": full_name,
-            "filename": new_filename,
-            "output_path": new_path,
-        }
-
-    except Exception as e:
-        print(f"❌ PDF işleme hatası: {e}")
-        # En kötü durumda orijinal dosyayı döndür
-        try:
-            fallback_name = f"fallback_{uuid4().hex[:8]}.pdf"
-            fallback_path = os.path.join(output_dir, fallback_name)
-            shutil.copy(original_path, fallback_path)
-            return {
-                "success": False,
-                "full_name": None,
-                "filename": fallback_name,
-                "output_path": fallback_path,
-                "error": str(e),
-            }
-        except Exception as fallback_error:
-            return {
-                "success": False,
-                "full_name": None,
-                "filename": None,
-                "output_path": None,
-                "error": f"Orijinal hata: {e}, Fallback hata: {fallback_error}",
-            }
+        os.rep
