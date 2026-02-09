@@ -1,6 +1,5 @@
 fastapi
 uvicorn[standard]
 pdfplumber
-pdf-redactor
 python-multipart
 pikepdf
