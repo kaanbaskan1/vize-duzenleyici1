@@ -6,7 +6,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 def extract_full_name(pdf_path):
     try:
         with pdfplumber.open(pdf_path) as pdf:
@@ -20,10 +19,8 @@ def extract_full_name(pdf_path):
         logger.error(f"Error extracting full name: {e}")
     return None
 
-
 def sanitize_filename(filename):
     return re.sub(r'[^a-zA-ZçÇğĞıİöÖşŞüÜ\s]', '', filename).strip()
-
 
 def process_pdf(input_path, output_path):
     options = pdf_redactor.RedactorOptions()
@@ -37,6 +34,7 @@ def process_pdf(input_path, output_path):
         (re.compile(r"Tel\s*(?:no)?:?\s*\+?\d{1,3}[-\s]?\d{1,4}[-\s]?\d{4,}"), lambda m: ""),
         (re.compile(r",?\s*Mob[:\s]*\+?\d{1,3}[-\s]?\d{1,4}[-\s]?\d{4,}"), lambda m: ""),
         (re.compile(r"Arkan\s*Tourism\s*LLC", re.IGNORECASE), lambda m: ""),
+        (re.compile(r"\bArkan\b", re.IGNORECASE), lambda m: ""),
         (re.compile(r",?\s*Mob\s*\+971\s*54\s*560\s*4204"), lambda m: ""),
         (re.compile(r"\u0645\.\u0645\.\u0630\.\u0634\s*\u0629\u062d\u0627\u064a\u0633\u0644\u0644\s*\u064a\u062f\s*\u064a\u0628\s*\u0645\u0627"), lambda m: ""),
         (re.compile(r"\u0645\.\u0645\.\u0630\s*\u0629\u062d\u0627\u064a\u0633\u0644\u0644\s*\u0646\u0627\u0643\u0631\u0623"), lambda m: ""),
